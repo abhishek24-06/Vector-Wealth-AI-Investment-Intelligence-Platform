@@ -221,6 +221,14 @@ def analyze_ticker(payload: AnalyzeRequest, request: Request):
 
     started_at = time.perf_counter()
     ticker = payload.ticker.strip().upper()
+
+    # Validate ticker length (minimum 3 chars for valid NSE/BSE tickers)
+    if len(ticker) < 3:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid ticker: '{ticker}'. Ticker must be at least 3 characters (e.g., MARUTI, TCS, INFY)."
+        )
+
     query = f"What is the sentiment on {ticker}?"
 
     try:
