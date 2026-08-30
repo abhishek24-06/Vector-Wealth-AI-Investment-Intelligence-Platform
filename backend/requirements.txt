@@ -9,3 +9,5 @@ uvicorn[standard]>=0.30.0
 yfinance>=1.2.0
 beautifulsoup4>=4.14.0
 gunicorn>=22.0.0
+sentence-transformers>=3.0.0
+torch>=2.0.0

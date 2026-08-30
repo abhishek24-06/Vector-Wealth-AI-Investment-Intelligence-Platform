@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -13,18 +12,21 @@ from typing import Any
 import chromadb
 import requests
 from dotenv import load_dotenv
-from google import genai
 
+from embedding_service import (
+    CHROMA_COLLECTION_NAME,
+    DB_PATH,
+    build_document_id,
+    build_document_text,
+    embed_texts,
+    get_chroma_collection,
+)
 from stock_data import SECTOR_QUERIES, STOCK_ALIASES
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT_DIR / ".env"
-DB_PATH = Path(os.getenv("VECTOR_WEALTH_DB_PATH", str(Path(__file__).resolve().parent / "vector_wealth_db")))
 STATE_PATH = DB_PATH / "live_ingest_state.json"
-
-COLLECTION_NAME = "market_news"
-EMBEDDING_MODELS = ("text-embedding-004", "gemini-embedding-001")
 
 # India-focused news domains for NewsAPI
 INDIA_NEWS_DOMAINS: list[str] = [
@@ -82,9 +84,8 @@ def _safe_str(value: Any) -> str:
 
 
 def _build_article_id(url: str, title: str, published_at: str) -> str:
-    unique_source = url or f"{title}|{published_at}"
-    digest = hashlib.sha256(unique_source.encode("utf-8", errors="ignore")).hexdigest()
-    return f"live_news_{digest[:32]}"
+    """Build deterministic article ID for idempotent ingestion."""
+    return build_document_id("live", title, published_at, url)
 
 
 def _normalize_text(value: str) -> str:
@@ -212,9 +213,8 @@ class LiveNewsIngestor:
         self._lock = threading.Lock()
         self._state = self._load_state()
 
-        from agents import chroma_client, news_collection
-        self._chroma_client = chroma_client
-        self._collection = news_collection
+        # Use the new collection with local embeddings
+        self._collection = get_chroma_collection()
 
     def _load_state(self) -> dict[str, Any]:
         if not STATE_PATH.exists():
@@ -247,24 +247,6 @@ class LiveNewsIngestor:
     def _save_state(self) -> None:
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         STATE_PATH.write_text(json.dumps(self._state, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    def _get_genai_client(self) -> genai.Client:
-        api_key = _safe_str(os.getenv("GOOGLE_API_KEY"))
-        if not api_key:
-            raise RuntimeError("GOOGLE_API_KEY is missing in root .env.")
-        return genai.Client(api_key=api_key)
-
-    def _embed_texts(self, genai_client: genai.Client, texts: list[str]):
-        last_error: Exception | None = None
-        for model_name in EMBEDDING_MODELS:
-            try:
-                return genai_client.models.embed_content(model=model_name, contents=texts)
-            except Exception as exc:
-                last_error = exc
-                continue
-        if last_error:
-            raise RuntimeError(f"Embedding failed for all configured models: {last_error}") from last_error
-        raise RuntimeError("Embedding failed: no models configured.")
 
     def _resolve_from_dt(self) -> datetime:
         now_utc = datetime.now(UTC)
@@ -700,8 +682,7 @@ class LiveNewsIngestor:
                     self._save_state()
                     return summary
 
-                genai_client = self._get_genai_client()
-
+                # Use local embedding service
                 ids: list[str] = []
                 documents: list[str] = []
                 metadatas: list[dict[str, Any]] = []
@@ -713,7 +694,7 @@ class LiveNewsIngestor:
                     article["ticker_tags"] = ticker_tags
                     ids.append(article_id)
                     documents.append(
-                        _build_document_text(
+                        build_document_text(
                             title=title,
                             description=description,
                             ticker_tags=ticker_tags,
@@ -721,8 +702,7 @@ class LiveNewsIngestor:
                     )
                     metadatas.append(self._build_metadata(article))
 
-                embedding_response = self._embed_texts(genai_client, documents)
-                embeddings = [item.values if hasattr(item, "values") else item for item in embedding_response.embeddings]
+                embeddings = embed_texts(documents)
 
                 self._collection.add(
                     ids=ids,
