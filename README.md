@@ -1075,44 +1075,6 @@ Gemini
 
 while deterministic fallback behavior is used in other workflows where possible. fileciteturn39file1L314-L337
 
----
-
-# Current Status
-
-| Component | Status |
-|---|---|
-| FastAPI backend | ✅ Working |
-| Fast analysis | ✅ Working |
-| Optional GenAI analysis | ✅ Working |
-| AI summaries | ✅ Working |
-| Live news | ⚠️ Requires configured providers |
-| Opportunity scanner | ✅ Working |
-| Portfolio | ✅ Working |
-| Chat | ✅ Working with provider fallback |
-| Next.js frontend | ✅ Build passing |
-| Legacy Flutter frontend | ✅ Removed |
-| Frontend deployment config | ⚠️ Not configured |
-| Frontend / E2E tests | ⚠️ Not implemented |
-
-The audit currently describes the backend as production-ready while identifying frontend deployment configuration and persistence architecture as remaining work. fileciteturn39file1L599-L629
-
----
-
-# Known Limitations
-
-- `yfinance` is an unofficial market-data source and can occasionally fail.
-- Live-news availability depends on provider credentials and external service behavior.
-- ChromaDB currently uses local persistent storage rather than a distributed high-availability architecture.
-- Backend rate limiting is in-memory.
-- The current API does not provide full user authentication.
-- JSON persistence is not a multi-node production database architecture.
-- Frontend deployment configuration is still pending.
-- Full frontend/E2E integration testing is still a future improvement.
-- Observability is currently limited compared with a production-grade telemetry stack.
-
-These limitations are explicitly identified in the project's technical audit. fileciteturn39file1L617-L629
-
----
 
 # Engineering Highlights
 
@@ -1150,26 +1112,6 @@ TypeScript interfaces mirror backend response models to keep the UI/data boundar
 
 These are among the main engineering achievements identified by the project audit. fileciteturn39file1L634-L646
 
----
-
-# Future Improvements
-
-Planned or logical next steps include:
-
-- Production frontend deployment
-- Authentication and user accounts
-- Managed relational persistence
-- Distributed rate limiting
-- Managed/distributed vector storage
-- Full frontend testing
-- Full E2E testing
-- Better telemetry and observability
-- Additional market-data providers
-- More advanced retrieval/reranking
-- Richer portfolio analytics
-- Improved live-news quality and entity resolution
-
----
 
 # Disclaimer
 
