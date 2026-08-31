@@ -1,155 +1,382 @@
-Vector Wealth
+# Vector Wealth — AI Investment Intelligence Platform
 
-AI-Powered Investment Research for the Indian Stock Market
+> **An AI-powered investment research platform for the Indian stock market that combines explainable sentiment analysis, semantic news retrieval, live market intelligence, opportunity discovery, portfolio analytics, and conversational research.**
 
-Vector Wealth is a full-stack investment research platform focused on Indian equities. It combines rule-based sentiment analysis, local vector search, historical and live financial news, market-price data, LLM-assisted research, opportunity discovery, and goal-based portfolio management through a Next.js web frontend and FastAPI backend.
+Vector Wealth is a full-stack financial intelligence application designed around a simple idea: investors should be able to move from **market information → relevant evidence → structured analysis → actionable research context** without switching between multiple tools.
 
-Disclaimer: Vector Wealth is a research and decision-support project. Its outputs are not financial advice or a substitute for professional financial guidance.
+The platform combines deterministic analytics with selectively applied LLM reasoning. Historical and live financial news are indexed into a local vector database, retrieved for ticker-specific analysis, scored through an explainable sentiment engine, enriched with market data, and surfaced through a modern Next.js interface. fileciteturn39file1L9-L29
 
-Why Vector Wealth?
+---
 
-Retail investors often have access to market prices, headlines, and research tools separately, but turning that information into a structured view of a stock can require multiple workflows. Vector Wealth brings the main research steps into one application:
+## Demo
 
-Analyze an NSE/BSE stock from a ticker
+### Stock Analysis
 
-Combine recent and historical financial news
+The stock-analysis workflow brings together current price data, recent and historical sentiment, confidence, peer comparison, key drivers, and relevant news for an Indian equity.
 
-Produce explainable sentiment and BUY/HOLD/SELL signals
+![Vector Wealth Stock Analysis — Reliance](docs/images/stock-analysis-reliance.png)
 
-Search news semantically using local embeddings
+**Description:** Reliance analysis showing ticker search, market price and daily change, overall/recent/pattern sentiment, confidence, sentiment history, peer comparison, positive/negative drivers, and recent headlines.
 
-Generate AI-assisted summaries and explanations
+![Vector Wealth Stock Analysis — Bajaj Finance](docs/images/stock-analysis-bajaj-finance.png)
 
-Discover potential opportunities automatically
+**Description:** Bajaj Finance analysis demonstrating the same end-to-end research pipeline with live headline retrieval, sentiment scoring, confidence estimation, historical trend visualization, and market context.
 
-Track goal-based portfolios and holdings
+### Opportunity Discovery
 
-Ask questions through a conversational research assistant
+The Discover workflow ranks potentially attractive stocks from recent market-news sentiment and presents them as research candidates.
 
-The system follows a hybrid architecture: deterministic code handles latency-sensitive, explainable operations while LLMs are used selectively where language reasoning adds value.
+![Vector Wealth Opportunity Scanner](docs/images/opportunity-scanner.png)
 
-Core Features
+**Description:** Opportunity Scanner showing ranked candidates, sentiment scores, article counts, BUY classifications, confidence, latest headlines, and links into deeper ticker analysis.
 
-Stock Analysis
+### AI Research Assistant
 
-For a selected ticker, the application can return:
+The conversational interface lets users ask questions about individual stocks, comparisons, sectors, market opportunities, and financial concepts.
 
-Current price
+![Vector Wealth AI Research Assistant](docs/images/ai-research-chat.png)
 
-Price change and percentage change
+**Description:** AI Research Assistant showing conversational stock research, comparison requests, opportunity queries, and natural-language market analysis.
 
-Overall sentiment
+---
 
-Recent sentiment
+# Overview
 
-Historical/pattern sentiment
+Indian retail investors often have access to prices, headlines, screeners, and financial information, but the research process remains fragmented.
 
-Confidence
+Vector Wealth addresses this by combining:
 
-BUY / HOLD / SELL recommendation
+- **Ticker analysis**
+- **Historical + live financial news**
+- **Semantic vector retrieval**
+- **Explainable rule-based sentiment**
+- **Optional LLM reasoning**
+- **Market-price enrichment**
+- **Opportunity scanning**
+- **Goal-based portfolio tracking**
+- **Conversational research**
 
-Positive and negative drivers
+The architecture is intentionally hybrid. A deterministic fast path handles retrieval, sentiment, confidence, and recommendation logic, while LLMs are used where language understanding and synthesis provide additional value. fileciteturn39file1L168-L183
 
-Relevant news
+---
 
-Peer comparison
+# Key Features
 
-Sentiment history
+## 1. AI-Assisted Stock Analysis
 
-Optional AI summary
+Enter an NSE/BSE ticker and Vector Wealth builds a structured research view containing:
 
-Multi-Source News Intelligence
+- Current price
+- Price change and percentage change
+- Overall sentiment
+- Recent sentiment
+- Historical/pattern sentiment
+- Confidence
+- BUY / HOLD / SELL signal
+- Positive and negative drivers
+- Relevant news
+- Peer comparison
+- Sentiment history
+- Optional AI summary
 
-Vector Wealth combines:
+### Analysis flow
 
-Source
+```text
+Ticker
+  ↓
+Ticker extraction / normalization
+  ↓
+ChromaDB retrieval + local news search
+  ↓
+Deduplication
+  ↓
+Recent vs historical split
+  ↓
+On-demand live-news fallback
+  ↓
+Sentiment calculation
+  ↓
+Confidence + drivers + explanation
+  ↓
+Price + peers + AI summary
+  ↓
+AnalysisResult
+```
 
-Role
+The backend analysis flow is implemented through `main.py` → `agents.run_analysis()` → retrieval → sentiment → enrichment → typed response. fileciteturn39file1L168-L183
 
+---
+
+## 2. Explainable Sentiment Engine
+
+Vector Wealth does not rely on a black-box LLM for every sentiment decision.
+
+The rule-based sentiment engine supports:
+
+- Weighted positive and negative terms
+- Intensifiers
+- Negation
+- Contrast handling
+- Numeric magnitude
+- Segment weighting
+- Recency effects
+- Source-quality weighting
+- Positive/negative driver extraction
+
+### Sentiment processing
+
+```text
+Article
+  ↓
+Contrast segmentation
+  ↓
+Tokenization
+  ↓
+Positive / negative term matching
+  ↓
+Weighting
+  ├─ term weights
+  ├─ intensifiers
+  ├─ negation
+  └─ numeric magnitude
+  ↓
+Weighted segment score
+  ↓
+Recency / source weighting
+  ↓
+Final article sentiment
+```
+
+The score is clamped to `[-1, 1]`, keeping the output easy to interpret.
+
+### Aggregation
+
+```text
+now_sentiment
+    = average(recent article sentiment)
+
+pattern_sentiment
+    = time-decay weighted historical sentiment
+      × source quality
+
+sentiment
+    = 0.7 × now_sentiment
+      + 0.3 × pattern_sentiment
+```
+
+When recent evidence is unavailable, the historical component receives additional influence. fileciteturn39file1L293-L304
+
+### Recommendation thresholds
+
+```text
+BUY   >=  0.20
+SELL  <= -0.20
+HOLD  otherwise
+```
+
+Confidence combines recent-news coverage with historical evidence. fileciteturn39file1L293-L304
+
+---
+
+## 3. Semantic Financial-News Search
+
+News is represented as vectors using a local Sentence Transformers model and stored in ChromaDB.
+
+### Retrieval sources
+
+```text
 Historical CSV
-
-Long-term market-news context
-
+      +
 NewsAPI
-
-Live/on-demand news
-
+      +
 Finnhub
-
-Live news source/fallback
-
+      +
 RSS
+      ↓
+Ticker tagging
+      ↓
+Sentence Transformer embeddings
+      ↓
+ChromaDB
+```
 
-Free live-news ingestion
+Default embedding model:
 
-Historical news is ingested into ChromaDB, while live ingestion periodically fetches new material, detects ticker tags, generates embeddings, and stores it for retrieval.
-
-Explainable Sentiment
-
-The sentiment engine is rule-based and deterministic. It supports:
-
-Weighted positive/negative terms
-
-Intensifiers
-
-Negation handling
-
-Contrast handling
-
-Numeric magnitude effects
-
-Recency decay
-
-Source-quality weighting
-
-Positive/negative driver extraction
-
-This keeps the core sentiment score fast and inspectable rather than making every decision dependent on an LLM.
-
-Local Semantic Search
-
-News documents use:
-
+```text
 sentence-transformers/all-MiniLM-L6-v2
+```
 
-with 384-dimensional normalized embeddings stored in ChromaDB. This removes the need for a hosted embedding service for the core retrieval path.
+Properties:
 
-AI Research Assistant
+| Property | Value |
+|---|---|
+| Embedding dimension | 384 |
+| Device | CPU |
+| Collection | `market_news_v2` |
+| Batch size | 64 |
+| Similarity | Normalized / cosine |
+| Storage | Persistent ChromaDB |
 
-The chat interface supports stock, comparison, portfolio, opportunity, and general research questions. It uses intent routing to decide whether to fetch additional market data before generating an answer.
+The vector layer uses deterministic ingestion IDs and stores metadata such as dates, titles, provider information, and ticker tags. fileciteturn39file1L246-L264
 
-Primary provider:
+---
 
-Groq → Llama 3.3 70B
+## 4. Hybrid News Ingestion
 
-Fallback:
+Vector Wealth supports historical indexing and live ingestion.
 
-Google Gemini 2.5 Flash
+### Historical pipeline
 
-Opportunity Scanner
+```text
+IndianFinancialNews.csv
+        ↓
+CSV ingestion
+        ↓
+Ticker alias detection
+        ↓
+Deterministic IDs
+        ↓
+Batch embeddings
+        ↓
+ChromaDB
+```
 
-The Discover workflow uses a two-stage pipeline:
+### Live pipeline
 
+```text
+LiveNewsIngestor
+      │
+      ├── RSS
+      ├── NewsAPI
+      └── Finnhub
+      │
+      ▼
+Deduplication
+      │
+      ▼
+Ticker tagging
+      │
+      ▼
+Embeddings
+      │
+      ▼
+ChromaDB
+```
+
+The live ingestion pipeline is configurable and uses sector rotation so that different market sectors receive coverage across successive ingestion cycles. fileciteturn39file1L188-L227
+
+### Sector rotation
+
+Example sector queries include:
+
+```text
+Banking
+IT
+Auto
+Pharma
+Oil & Gas
+...
+```
+
+The active sector query changes between ingestion cycles to distribute coverage. fileciteturn39file1L216-L227
+
+---
+
+## 5. AI Research Assistant
+
+The chat interface turns the platform into a conversational market-research workspace.
+
+Users can ask for:
+
+- Single-stock analysis
+- Stock comparisons
+- Portfolio context
+- Bullish opportunities
+- Sector research
+- Financial concept explanations
+
+The system uses internal intent tags to route requests into the relevant data workflows. fileciteturn39file1L326-L337
+
+### Chat routing
+
+```text
+User message
+      ↓
+LLM intent detection
+      ↓
+┌────────────────────────────────┐
+│ ANALYZE:TICKER                 │
+│ COMPARE:T1,T2                  │
+│ WATCHLIST                      │
+│ PORTFOLIO                      │
+│ OPPORTUNITIES                  │
+│ DIRECT                         │
+└────────────────────────────────┘
+      ↓
+Relevant service / analysis
+      ↓
+Context-aware response
+```
+
+### Provider fallback
+
+```text
+Groq
+  ↓
+timeout / failure
+  ↓
+Gemini
+```
+
+The architecture uses Groq as the primary chat provider and Gemini as fallback. fileciteturn39file1L308-L337
+
+---
+
+## 6. Opportunity Discovery
+
+The Discover page uses a two-stage opportunity scanner.
+
+### Stage 1 — Deterministic filtering
+
+```text
 Recent news
-   ↓
-Ticker grouping + sentiment
-   ↓
-Filter high-sentiment candidates
-   ↓
+    ↓
+Ticker grouping
+    ↓
+Sentiment calculation
+    ↓
+Threshold filtering
+    ↓
 Top candidate set
-   ↓
-Gemini selection/reasoning
-   ↓
+```
+
+### Stage 2 — LLM selection
+
+```text
+Candidate set
+    ↓
+Gemini
+    ↓
+Top BUY opportunities
+    ↓
+Reasoning + confidence
+    ↓
 Price enrichment
-   ↓
-Top opportunities
+```
 
-The scanner can operate in pre-market, market-hours, and post-market windows and can also be triggered manually.
+The default scanner configuration includes a `0.15` sentiment threshold, up to `20` candidates, and a target of `5` final opportunities. fileciteturn39file1L398-L429
 
-Goal-Based Portfolio
+This keeps the LLM workload focused on a smaller, higher-quality candidate set instead of reasoning over the entire news universe.
 
-Goals contain holdings and target information such as:
+---
 
+## 7. Goal-Based Portfolio Management
+
+Users can create investment goals and attach stock holdings to them.
+
+### Goal model
+
+```text
 Goal
 ├── id
 ├── name
@@ -161,756 +388,511 @@ Goal
       ├── quantity
       ├── buyPrice
       └── buyDate
+```
 
-Computed portfolio metrics include invested amount, current value, P&L, P&L percentage, progress, and time remaining. AI suggestions incorporate portfolio context, risk tolerance, and holding-level sentiment.
+### Computed portfolio metrics
 
-Architecture
+- Total invested
+- Current value
+- P&L
+- P&L percentage
+- Goal progress
+- Years remaining
 
-┌────────────────────────────────────────────────────────────────────┐
-│                     Next.js 14 / React 18                         │
-│                                                                    │
-│ Analyze │ Discover │ Portfolio │ Chat │ Settings                  │
-│                                                                    │
-│ React Context + Zustand + Typed API Client                       │
-└──────────────────────────────┬─────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                         FastAPI Backend                            │
-│                                                                    │
-│ Routing • Validation • Rate Limiting • Orchestration              │
-└──────────────┬──────────────────┬──────────────────┬───────────────┘
-               │                  │                  │
-               ▼                  ▼                  ▼
-        ┌──────────────┐   ┌───────────────┐  ┌──────────────┐
-        │ Analysis     │   │ News Pipeline │  │ Market Data  │
-        │ Sentiment    │   │ CSV / RSS     │  │ yfinance     │
-        │ Retrieval    │   │ NewsAPI       │  │ 5-min cache  │
-        │ Enrichment   │   │ Finnhub       │  └──────────────┘
-        └──────┬───────┘   └──────┬────────┘
-               │                  │
-               ▼                  ▼
-        ┌──────────────┐   ┌───────────────┐
-        │   ChromaDB   │   │ Historical CSV│
-        │  MiniLM-L6-v2│   │ Financial news│
-        │   384-dim    │   └───────────────┘
-        └──────┬───────┘
-               │
-               ▼
-       ┌──────────────────────┐
-       │ AI / LLM Layer       │
-       │ Gemini • Groq        │
-       │ LangGraph (optional) │
-       └──────────────────────┘
+Portfolio analysis fetches market prices in parallel and can use Gemini to generate goal-aware suggestions and recommended stocks. fileciteturn39file1L342-L372
 
-End-to-End Stock Analysis
+---
 
-For example:
+# System Architecture
 
-POST /analyze
-Content-Type: application/json
+```mermaid
+flowchart TB
 
-{"ticker":"MARUTI"}
+    U[User]
 
-The fast analysis path follows:
+    U --> FE[Next.js 14 Frontend]
 
-POST /analyze
+    FE --> R1[Analyze]
+    FE --> R2[Discover]
+    FE --> R3[Portfolio]
+    FE --> R4[Chat]
+
+    FE --> API[FastAPI Backend]
+
+    API --> AG[Analysis Orchestrator]
+    API --> NEWS[News Ingestion]
+    API --> PRICE[yfinance]
+    API --> PORT[Portfolio Service]
+    API --> CHAT[Chat Service]
+    API --> SCAN[Opportunity Scanner]
+
+    NEWS --> RSS[RSS]
+    NEWS --> NAPI[NewsAPI]
+    NEWS --> FIN[Finhub]
+    NEWS --> CSV[Historical CSV]
+
+    NEWS --> EMB[Sentence Transformers]
+    EMB --> CHROMA[(ChromaDB)]
+
+    AG --> CHROMA
+    AG --> SENT[Sentiment Engine]
+    AG --> PRICE
+
+    CHAT --> GROQ[Groq]
+    CHAT --> GEMINI[Gemini]
+
+    AG --> GEMINI
+
+    PORT --> PRICE
+    PORT --> GEMINI
+
+    SCAN --> CHROMA
+    SCAN --> SENT
+    SCAN --> GEMINI
+
+    STORAGE[(JSON / Local Storage)]
+
+    PORT --> STORAGE
+    CHAT --> STORAGE
+```
+
+---
+
+# End-to-End Research Flow
+
+A typical analysis request travels through the system as follows:
+
+```text
+1. User enters ticker
+          ↓
+2. Next.js sends POST /analyze
+          ↓
+3. FastAPI validates request
+          ↓
+4. Analysis orchestrator identifies ticker
+          ↓
+5. Retrieve relevant news
+          ├── ChromaDB semantic retrieval
+          └── local historical search
+          ↓
+6. Deduplicate results
+          ↓
+7. Split recent vs historical evidence
+          ↓
+8. Fetch on-demand news when required
+          ↓
+9. Run sentiment analysis
+          ↓
+10. Compute confidence and drivers
+          ↓
+11. Fetch current market price
+          ↓
+12. Fetch peer prices
+          ↓
+13. Generate optional AI summary
+          ↓
+14. Return structured AnalysisResult
+          ↓
+15. Next.js renders research dashboard
+```
+
+---
+
+# AI / LLM Architecture
+
+| Capability | Provider | Model | Role |
+|---|---|---|---|
+| GenAI analysis | Google | Gemini 2.5 Flash | Optional LangGraph reasoning |
+| AI summary | Google | Gemini 2.5 Flash | Short research summary |
+| Chat | Groq | Llama 3.3 70B | Primary conversational model |
+| Chat fallback | Google | Gemini 2.5 Flash | Provider fallback |
+| Opportunity scanner | Google | Gemini 2.5 Flash | Candidate selection |
+| Portfolio suggestions | Google | Gemini 2.5 Flash | Goal-aware recommendations |
+
+### LangGraph path
+
+```text
+Scout Agent
     ↓
-main.py
-    ↓
-agents.run_analysis()
-    ↓
-ChromaDB retrieval + local CSV search
-    ↓
-deduplication
-    ↓
-recent vs historical split
-    ↓
-on-demand NewsAPI fallback if needed
-    ↓
-sentiment + confidence + drivers + explanation
-    ↓
-price + peer + AI-summary enrichment
-    ↓
-AnalysisResult
-    ↓
-Next.js rendering
-
-News Pipeline
-
-Historical ingestion
-
-IndianFinancialNews.csv
-       ↓
-ingest_data.py
-       ↓
-Ticker alias detection
-       ↓
-Deterministic IDs
-       ↓
-Batch embeddings
-       ↓
-ChromaDB
-
-The historical ingestion flow is designed to be idempotent and resumable.
-
-Live ingestion
-
-LiveNewsIngestor
-      │
-      ├── RSS
-      ├── NewsAPI
-      └── Finnhub
-      │
-      ▼
-Deduplication
-      ↓
-Ticker tagging
-      ↓
-Embeddings
-      ↓
-ChromaDB
-
-The live system also rotates across sector queries so different areas of the Indian market are covered over time.
-
-Retrieval order
-
-Ticker query
-   ↓
-ChromaDB retrieval
-   ↓
-Local CSV matching
-   ↓
-Deduplication
-   ↓
-Recent/historical split
-   ↓
-NewsAPI on-demand fallback
-   ↓
-Sentiment aggregation
-
-Sentiment Methodology
-
-The core sentiment engine processes article text through weighted lexical rules.
-
-Processing
-
-Split around contrast terms such as but, however, despite, and although.
-
-Tokenize and match positive/negative terms.
-
-Apply term weights.
-
-Apply intensifiers.
-
-Apply negation flips.
-
-Apply numeric magnitude effects.
-
-Weight segments and recency.
-
-Clamp the result to [-1, 1].
-
-Aggregation
-
-Recent sentiment is the average sentiment of recent articles. Pattern sentiment uses time decay plus source-quality weighting.
-
-sentiment = 0.7 × now_sentiment
-          + 0.3 × pattern_sentiment
-
-When there is insufficient recent news, the historical pattern component receives greater influence.
-
-Recommendation thresholds
-
-BUY   >=  0.20
-SELL  <= -0.20
-HOLD  otherwise
-
-Confidence combines recent-news coverage and historical context.
-
-AI / LLM Layer
-
-Feature
-
-Provider
-
-Model
-
-Fallback
-
-GenAI analysis
-
-Google
-
-Gemini 2.5 Flash
-
-Deterministic fast path
-
-AI summary
-
-Google
-
-Gemini 2.5 Flash
-
-None
-
-Chat
-
-Groq
-
-Llama 3.3 70B
-
-Gemini
-
-Opportunity scanner
-
-Google
-
-Gemini 2.5 Flash
-
-Rule-based
-
-Portfolio suggestions
-
-Google
-
-Gemini 2.5 Flash
-
-Rule-based
-
-Optional LangGraph path
-
-scout_agent
-    ↓
-analyst_advisor_agent
+Analyst / Advisor Agent
     ↓
 Structured JSON
     ↓
 Market-data enrichment
+```
 
-Controlled by:
+The deterministic fast analysis path remains available through `USE_GENAI_ANALYSIS=false`, reducing unnecessary LLM dependency for routine analysis. fileciteturn39file1L308-L323
 
-USE_GENAI_ANALYSIS=false
+---
 
-Chat Routing
+# Frontend Architecture
 
-Internal intent tags allow the assistant to connect natural-language requests to application capabilities:
+The web application uses the Next.js App Router.
 
-Intent
+| Technology | Version / Role |
+|---|---|
+| Next.js | 14.2.0 |
+| React | 18.3.0 |
+| TypeScript | 5.4.0 |
+| Tailwind CSS | 3.4.3 |
+| Recharts | 2.12.0 |
+| Zustand | 4.5.0 |
+| Inter | Typography |
+| Inline SVG | Icons |
 
-Action
+### Routes
 
-[ANALYZE:TICKER]
+| Route | Purpose |
+|---|---|
+| `/` | Redirect to analysis |
+| `/analyze` | Stock analysis |
+| `/discover` | Opportunity scanner |
+| `/portfolio` | Goal-based portfolio |
+| `/chat` | AI research assistant |
+| `/settings` | Backend/theme configuration |
 
-Fetch stock analysis and generate a contextual response
+These routes and their primary components are documented in the technical audit. fileciteturn39file1L98-L117
 
-[COMPARE:T1,T2]
+### State management
 
-Analyze both tickers and compare them
+The frontend uses React Context for domain state and Zustand for lightweight persistent stores.
 
-[PORTFOLIO]
-
-Inject portfolio analysis/context
-
-[OPPORTUNITIES]
-
-Fetch scanner results
-
-[WATCHLIST]
-
-Work with watchlist context
-
-The tag is removed before the final response is returned to the user.
-
-Frontend
-
-Stack
-
-Technology
-
-Purpose
-
-Next.js 14.2
-
-Web framework / App Router
-
-React 18.3
-
-UI
-
-TypeScript 5.4
-
-Type safety
-
-Tailwind CSS 3.4
-
-Styling
-
-Recharts 2.12
-
-Sentiment charts
-
-Zustand 4.5
-
-Lightweight client state
-
+```text
 React Context
+├── Theme
+├── Analysis
+├── Discover
+├── Portfolio
+└── Chat
 
-Domain state/providers
+Zustand
+├── Watchlist
+└── Trends
+```
 
-Inter
+Browser persistence is used for theme, watchlist, trends, recent tickers, and user-local state. fileciteturn39file1L108-L117
 
-Typography
+---
 
-Inline SVG
+# Backend Architecture
 
-Icons
+| Module | Responsibility |
+|---|---|
+| `main.py` | FastAPI application, routing, CORS, rate limiting |
+| `agents.py` | Analysis orchestration |
+| `sentiment.py` | Rule-based sentiment and drivers |
+| `price_service.py` | yfinance market-price access |
+| `opportunity_scanner.py` | Opportunity detection |
+| `portfolio_service.py` | Portfolio analysis + AI suggestions |
+| `chat_service.py` | Conversational routing + provider fallback |
+| `live_news_ingest.py` | Live news ingestion |
+| `ingest_data.py` | Historical CSV ingestion |
+| `embedding_service.py` | Sentence Transformer embeddings |
+| `storage_service.py` | JSON persistence |
+| `stock_data.py` | Stock aliases, peers, sectors |
+| `ai_summary.py` | Gemini research summaries |
 
-Routes
+The backend module responsibilities are defined in the audit report's responsibility matrix. fileciteturn39file1L143-L166
 
-Route
+---
 
-Purpose
+# API
 
-/
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/` | Health / service information |
+| `POST` | `/analyze` | Analyze ticker |
+| `GET` | `/opportunities` | Retrieve opportunities |
+| `POST` | `/opportunities/scan` | Run scanner |
+| `GET` | `/opportunities/status` | Scanner status |
+| `POST` | `/chat` | Send research question |
+| `GET` | `/chat/history/{sid}` | Retrieve chat history |
+| `POST` | `/portfolio/analyze` | Analyze goals/holdings |
+| `POST` | `/portfolio/suggest` | Generate goal suggestions |
+| `POST` | `/storage/portfolio/save` | Save portfolio |
+| `GET` | `/storage/portfolio/load` | Load portfolio |
+| `POST` | `/storage/chat/save` | Save chat |
+| `GET` | `/storage/chat/load` | Load chat |
+| `GET` | `/admin/live-news/status` | Live-news status |
+| `POST` | `/admin/live-news/refresh` | Trigger ingestion |
+| `POST` | `/admin/live-news/retag-existing` | Re-tag stored news |
 
-Redirect to analysis
+The backend currently exposes the analysis, scanner, portfolio, chat, storage, and live-news administration surfaces listed above. fileciteturn39file1L447-L465
 
-/analyze
+---
 
-Ticker analysis
+# Data Storage
 
-/discover
+| Storage | Purpose |
+|---|---|
+| ChromaDB | News vectors and metadata |
+| `portfolios.json` | Portfolio goals and holdings |
+| `chat_history.json` | Chat sessions |
+| `opportunities.json` | Scanner output |
+| `historical_ingest_state.json` | Historical ingest progress |
+| `live_ingest_state.json` | Live ingest state |
+| Browser localStorage | Theme, watchlist, trends and local UI state |
 
-Opportunity scanner
+The current design uses persistent local storage rather than a managed distributed database. fileciteturn39file1L433-L443
 
-/portfolio
+---
 
-Goal-based portfolio
+# Performance & Reliability
 
-/chat
+Vector Wealth includes several practical optimization layers.
 
-AI research assistant
+### Market data
 
-/settings
+- 5-minute successful-price cache
+- Short-lived failure cache
+- NSE → BSE fallback behavior
 
-Backend configuration and theme
+### Embeddings
 
-Frontend state
+- Batch embedding
+- Local CPU execution
+- Persistent ChromaDB
+- Deterministic IDs
 
-State
+### Portfolio
 
-Technology
+- Parallel holding-price retrieval
 
-Theme
+### Scanner
 
-React Context + localStorage
+- Deterministic candidate reduction before LLM selection
 
-Analysis
+### Frontend
 
-React Context
+- Request retry
+- Request timeout
+- Skeleton loading
+- Typed API errors
 
-Discover
+These mechanisms are documented in the performance and error-handling sections of the audit report. fileciteturn39file1L557-L595
 
-React Context
+---
 
-Portfolio
+# Error Handling
 
-React Context
+The application is designed to degrade gracefully when individual dependencies fail.
 
-Chat
+```text
+External Provider Failure
+        ↓
+Provider / cache fallback
+        ↓
+Continue with available data
+        ↓
+Return structured response
+```
 
-React Context
+Examples include:
 
-Watchlist
+- Groq → Gemini fallback
+- yfinance fallback/cache behavior
+- Per-batch ingestion isolation
+- Resumable ingestion
+- Frontend retry
+- Typed API errors
+- Null-safe financial formatting
 
-Zustand + localStorage
+fileciteturn39file1L557-L566
 
-Trends
+---
 
-Zustand + localStorage
+# Security
 
-Backend Modules
+Current security controls include:
 
-Module
+- API keys loaded through environment variables
+- `.env` excluded from source control
+- Optional admin API key
+- Configurable CORS
+- In-memory rate limiting
+- Frontend environment limited to `NEXT_PUBLIC_*` configuration
 
-Responsibility
+The current system does **not** implement full user authentication and uses an application-level API architecture rather than a multi-user identity system. fileciteturn39file1L571-L579
 
-main.py
+---
 
-FastAPI app, routing, CORS, rate limiting, endpoints
+# Environment Variables
 
-agents.py
+Create a local `.env` file and configure the required credentials.
 
-Analysis orchestration and enrichment
-
-sentiment.py
-
-Rule-based sentiment and drivers
-
-price_service.py
-
-yfinance prices and peers
-
-opportunity_scanner.py
-
-Proactive opportunity discovery
-
-portfolio_service.py
-
-Portfolio analysis and suggestions
-
-chat_service.py
-
-Chat routing and provider fallback
-
-live_news_ingest.py
-
-Live news ingestion
-
-ingest_data.py
-
-Historical CSV ingestion
-
-embedding_service.py
-
-Sentence Transformer embeddings
-
-storage_service.py
-
-JSON persistence
-
-stock_data.py
-
-Aliases, peer groups, sector queries
-
-ai_summary.py
-
-Gemini summaries
-
-ChromaDB
-
-Property
-
-Value
-
-Collection
-
-market_news_v2
-
-Embeddings
-
-all-MiniLM-L6-v2
-
-Dimension
-
-384
-
-Similarity
-
-Cosine / normalized vectors
-
-Device
-
-CPU by default
-
-Batch size
-
-64
-
-Storage
-
-vector_wealth_db/
-
-Example metadata includes:
-
-Date
-Title
-Description
-source
-published_at
-ingested_at
-provider
-ticker_tags
-primary_ticker
-
-Documents use deterministic IDs based on source/title/date/URL, supporting deduplication and idempotent ingestion.
-
-API
-
-Method
-
-Endpoint
-
-Purpose
-
-GET
-
-/
-
-Health/info
-
-POST
-
-/analyze
-
-Ticker analysis
-
-GET
-
-/opportunities
-
-Current opportunities
-
-POST
-
-/opportunities/scan
-
-Manual scan
-
-GET
-
-/opportunities/status
-
-Scanner status
-
-POST
-
-/chat
-
-Send chat message
-
-GET
-
-/chat/history/{sid}
-
-Load chat history
-
-POST
-
-/portfolio/analyze
-
-Portfolio analysis
-
-POST
-
-/portfolio/suggest
-
-Goal suggestions
-
-POST
-
-/storage/portfolio/save
-
-Save portfolio
-
-GET
-
-/storage/portfolio/load
-
-Load portfolio
-
-POST
-
-/storage/chat/save
-
-Save chat
-
-GET
-
-/storage/chat/load
-
-Load chat
-
-GET
-
-/admin/live-news/status
-
-Live-news status
-
-POST
-
-/admin/live-news/refresh
-
-Trigger live ingestion
-
-POST
-
-/admin/live-news/retag-existing
-
-Re-tag existing news
-
-Live-news admin endpoints use an admin key when admin authentication is enabled.
-
-Environment Variables
-
-Create a local .env file. Do not commit secrets.
-
-AI
-
+```env
 GOOGLE_API_KEY=your_google_key
 GROQ_API_KEY=your_groq_key
-GROQ_MODEL=llama-3.3-70b-versatile
-GROQ_BASE_URL=https://api.groq.com/openai/v1
-
-News
 
 NEWSAPI_KEY=your_newsapi_key
 FINNHUB_API_KEY=your_finnhub_key
-LIVE_NEWS_ENABLED=false
-LIVE_NEWS_PROVIDER=newsapi,rss
-LIVE_NEWS_INTERVAL_MINUTES=30
-RSS_ENABLED=true
 
-Application
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_BASE_URL=https://api.groq.com/openai/v1
 
 ALLOWED_ORIGINS=*
 ADMIN_API_KEY=your_admin_key
+
 RATE_LIMIT_MAX=10
 RATE_LIMIT_WINDOW=60
+
 USE_GENAI_ANALYSIS=false
 ENABLE_AI_SUMMARY=true
+
+LIVE_NEWS_ENABLED=false
+LIVE_NEWS_PROVIDER=newsapi,rss
+LIVE_NEWS_INTERVAL_MINUTES=30
+
 USE_SECTOR_ROTATION=true
 USE_INDIA_DOMAINS=true
-
-Vector search
+RSS_ENABLED=true
 
 EMBEDDING_MODEL=all-MiniLM-L6-v2
 EMBEDDING_DEVICE=cpu
 CHROMA_COLLECTION_NAME=market_news_v2
 VECTOR_WEALTH_DB_PATH=./vector_wealth_db
+
 FAST_NEWS_MAX_AGE_DAYS=30
 FAST_NEWS_MAX_CANDIDATES=120
+```
 
-At least one of GOOGLE_API_KEY or GROQ_API_KEY is required for the supported AI functionality.
+At least one of `GOOGLE_API_KEY` or `GROQ_API_KEY` is required for the supported AI workflows, while live-news providers are optional. fileciteturn39file1L470-L504
 
-Local Development
+**Never commit `.env` or real API keys.**
 
-Prerequisites
+---
 
-Python 3.13
+# Local Setup
 
-Node.js / npm
+## Prerequisites
 
-Git
+- Python 3.13
+- Node.js / npm
+- Git
 
-Backend
+## 1. Clone
 
-Windows PowerShell
+```bash
+git clone https://github.com/abhishek24-06/Vector-Wealth-AI-Investment-Intelligence-Platform.git
 
+cd Vector-Wealth-AI-Investment-Intelligence-Platform
+```
+
+## 2. Backend
+
+Create a virtual environment:
+
+### Windows PowerShell
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```powershell
 cd backend
 pip install -r requirements.txt
+```
+
+Start FastAPI:
+
+```powershell
 uvicorn main:app --reload
+```
 
 Backend:
 
+```text
 http://127.0.0.1:8000
+```
 
-FastAPI docs:
+Interactive API documentation:
 
+```text
 http://127.0.0.1:8000/docs
+```
 
-Frontend
+## 3. Frontend
 
 Open a second terminal:
 
+```powershell
 cd frontend-next
 npm install
 npm run dev
+```
 
 Frontend:
 
+```text
 http://localhost:3000
+```
 
-Production build verification:
+## 4. Verify production build
 
+```powershell
 npm run build
+```
 
-Testing
+The current Next.js frontend build is passing according to the project audit. fileciteturn39file1L599-L613
 
-Backend tests cover areas including:
+---
 
-API endpoints
+# Historical Data Ingestion
 
-Sentiment calculation
+The historical news corpus is ingested into ChromaDB using the backend ingestion pipeline.
 
-Ticker extraction and aliases
+```text
+Historical CSV
+      ↓
+ingest_data.py
+      ↓
+Ticker tagging
+      ↓
+Batch embeddings
+      ↓
+ChromaDB
+```
 
-Historical ingestion
+The ingestion flow is designed to support deterministic IDs, deduplication, and resumability. fileciteturn39file1L190-L213
 
-ChromaDB operations
+---
 
-Opportunity scanner logic
+# Live News Ingestion
 
-Representative test locations include:
+Live ingestion can be enabled through:
 
-backend/tests/test_api.py
-tests/test_sentiment.py
-tests/test_ticker.py
-test_ingest.py
-test_chromadb*.py
-test_scanner.py
+```env
+LIVE_NEWS_ENABLED=true
+```
 
-Current gaps:
+Supported providers include:
 
-No dedicated frontend test suite
+- RSS
+- NewsAPI
+- Finnhub
 
-No full browser E2E suite
+The ingestion service is configurable around:
 
-No complete frontend → backend → provider integration suite
+- polling interval
+- lookback window
+- page size
+- maximum articles per run
+- sector rotation
+- India-specific domains
+- provider selection
 
-Performance and Reliability
+---
 
-Current optimizations include:
+# Deployment
 
-5-minute market-price cache
+## Backend
 
-Short-lived failure cache for price lookup
+The backend is containerized for deployment and includes Render configuration.
 
-Parallel price fetching
-
-Batched local embedding generation
-
-Persistent ChromaDB
-
-Deterministic ingestion IDs
-
-Idempotent/resumable news ingestion
-
-Candidate reduction before LLM scanning
-
-API retry and timeout handling
-
-Groq → Gemini fallback for chat
-
-Backend rate limiting currently uses an in-memory sliding window of 10 requests per 60 seconds per IP by default.
-
-Security
-
-Current security measures include:
-
-Secrets loaded through environment variables
-
-.env excluded from Git
-
-Optional admin API key for live-news operations
-
-Configurable CORS
-
-Backend rate limiting
-
-No secrets stored in Next.js public configuration
-
-Production hardening would still require proper user authentication, distributed rate limiting, managed persistence, stricter CORS, and stronger observability.
-
-Deployment
-
-Backend
-
-The backend has Docker and Render configuration.
-
+```text
 Render
   ↓
 Docker
@@ -920,51 +902,54 @@ Gunicorn
 Uvicorn worker
   ↓
 FastAPI
+```
 
-The production container uses Python 3.13, binds to port 10000, and uses Gunicorn with a Uvicorn worker.
+The current backend deployment configuration uses Python 3.13, a Docker image, Gunicorn with a Uvicorn worker, and port `10000`. fileciteturn39file1L508-L531
 
-Frontend
+## Frontend
 
-The Next.js frontend builds successfully, but the current repository does not include dedicated frontend deployment configuration for Render, Vercel, Netlify, or another host.
+The Next.js application currently builds successfully but does not yet include a dedicated production deployment configuration.
 
-Data Storage
+Potential deployment targets:
 
-Storage
+- Vercel
+- Netlify
+- Cloudflare Pages
+- Container hosting
 
-Purpose
+The technical audit identifies frontend deployment configuration as remaining work. fileciteturn39file1L534-L538
 
-ChromaDB
+---
 
-News embeddings and metadata
+# Testing
 
-portfolios.json
+Current backend test coverage includes areas such as:
 
-Goals and holdings
+```text
+backend/tests/test_api.py
+tests/test_sentiment.py
+tests/test_ticker.py
+test_ingest.py
+test_chromadb*.py
+test_scanner.py
+```
 
-chat_history.json
+Coverage includes:
 
-Chat sessions
+- API behavior
+- Sentiment
+- Ticker extraction and aliases
+- Historical ingestion
+- ChromaDB operations
+- Scanner logic
 
-opportunities.json
+The current testing gap is frontend, E2E, and full-stack integration coverage. fileciteturn39file1L542-L553
 
-Scanner results
+---
 
-historical_ingest_state.json
+# Project Structure
 
-Historical ingestion progress
-
-live_ingest_state.json
-
-Live-ingestion state
-
-Browser localStorage
-
-Theme, watchlist, trends, recent state
-
-The current persistence model is suitable for local/single-instance use. A production deployment would benefit from managed database and vector infrastructure.
-
-Project Structure
-
+```text
 Vector-Wealth-AI-Investment-Intelligence-Platform/
 │
 ├── backend/
@@ -994,152 +979,236 @@ Vector-Wealth-AI-Investment-Intelligence-Platform/
 ├── data/
 │   └── IndianFinancialNews.csv
 │
+├── docs/
+│   └── images/
+│       ├── stock-analysis-reliance.png
+│       ├── stock-analysis-bajaj-finance.png
+│       ├── opportunity-scanner.png
+│       └── ai-research-chat.png
+│
 ├── Dockerfile
 ├── render.yaml
 ├── .env.example
 ├── .gitignore
 └── README.md
+```
 
-Key Engineering Decisions
+---
 
-Hybrid analysis instead of fully LLM-driven analysis
+# Key Engineering Decisions
 
-A deterministic fast path reduces latency, cost, and external-service dependence while preserving explainability. Optional GenAI analysis can be enabled where additional reasoning is useful.
+## Why a hybrid architecture?
 
-Local embeddings instead of hosted embeddings
+Not every research query needs an LLM.
 
-The local MiniLM model avoids embedding API quota/cost and supports repeatable indexing on CPU.
+The platform therefore separates:
 
-Historical + live news
+```text
+Deterministic work
+├── Retrieval
+├── Sentiment
+├── Confidence
+├── Recommendation thresholds
+└── Candidate filtering
 
-Historical news provides context and pattern information; live sources provide current market coverage. The retrieval layer can combine both and explicitly distinguish recent coverage from historical context.
+LLM work
+├── Language understanding
+├── Research synthesis
+├── Chat
+├── Opportunity selection
+└── Portfolio suggestions
+```
 
-Provider fallback
+This keeps routine operations predictable while still benefiting from generative reasoning where appropriate. fileciteturn39file1L634-L645
 
-External AI providers can fail or rate-limit. Chat therefore uses Groq as the primary provider with Gemini fallback, while scanner/portfolio workflows also have deterministic fallbacks.
+---
 
-Current Status
+## Why local embeddings?
 
-Component
+Using `all-MiniLM-L6-v2` locally provides:
 
-Status
+- CPU execution
+- 384-dimensional vectors
+- No hosted embedding dependency for the core retrieval layer
+- Batch processing
+- Persistent local storage
 
-FastAPI backend
+This was a deliberate engineering tradeoff to keep semantic retrieval practical and inexpensive. fileciteturn39file1L246-L257
 
-Working
+---
 
-Fast analysis
+## Why combine historical and live news?
 
-Working
+Historical news supplies context and pattern evidence.
 
-Optional GenAI analysis
+Live news supplies current information.
 
-Working
+The analysis pipeline therefore distinguishes:
 
-AI summary
+```text
+NOW
+↓
+Recent matched headlines
 
-Working
+PATTERN
+↓
+Historical contextual evidence
+```
 
-Live news
+This lets the application remain useful even when current headline coverage is sparse, while still preferring recent evidence when it is available. fileciteturn39file1L236-L240
 
-Requires configured external providers/keys
+---
 
-Opportunity scanner
+## Why use provider fallback?
 
-Working
+External AI services are not guaranteed to be continuously available.
 
-Portfolio
+The chat architecture therefore uses:
 
-Working
+```text
+Groq
+  ↓
+failure / timeout
+  ↓
+Gemini
+```
 
-Chat
+while deterministic fallback behavior is used in other workflows where possible. fileciteturn39file1L314-L337
 
-Working with provider fallback
+---
 
-Next.js frontend
+# Current Status
 
-Build passing
+| Component | Status |
+|---|---|
+| FastAPI backend | ✅ Working |
+| Fast analysis | ✅ Working |
+| Optional GenAI analysis | ✅ Working |
+| AI summaries | ✅ Working |
+| Live news | ⚠️ Requires configured providers |
+| Opportunity scanner | ✅ Working |
+| Portfolio | ✅ Working |
+| Chat | ✅ Working with provider fallback |
+| Next.js frontend | ✅ Build passing |
+| Legacy Flutter frontend | ✅ Removed |
+| Frontend deployment config | ⚠️ Not configured |
+| Frontend / E2E tests | ⚠️ Not implemented |
 
-Legacy Flutter frontend
+The audit currently describes the backend as production-ready while identifying frontend deployment configuration and persistence architecture as remaining work. fileciteturn39file1L599-L629
 
-Removed
+---
 
-Frontend deployment config
+# Known Limitations
 
-Not yet configured
+- `yfinance` is an unofficial market-data source and can occasionally fail.
+- Live-news availability depends on provider credentials and external service behavior.
+- ChromaDB currently uses local persistent storage rather than a distributed high-availability architecture.
+- Backend rate limiting is in-memory.
+- The current API does not provide full user authentication.
+- JSON persistence is not a multi-node production database architecture.
+- Frontend deployment configuration is still pending.
+- Full frontend/E2E integration testing is still a future improvement.
+- Observability is currently limited compared with a production-grade telemetry stack.
 
-Frontend/E2E tests
+These limitations are explicitly identified in the project's technical audit. fileciteturn39file1L617-L629
 
-Not yet implemented
+---
 
-Known Limitations
+# Engineering Highlights
 
-yfinance is an unofficial market-data source and can occasionally fail.
+### Hybrid Analysis Pipeline
 
-Live-news quality depends on external providers and credentials.
+A deterministic fast path combines local retrieval, explainable sentiment, confidence calculation, and market-data enrichment, with an optional GenAI path for deeper reasoning.
 
-ChromaDB is currently a local persistent vector store rather than highly available distributed infrastructure.
+### Local Semantic Retrieval
 
-Rate limiting is in-memory and resets with process restarts.
+Sentence Transformer embeddings are generated locally and persisted in ChromaDB, reducing dependency on external embedding services.
 
-The current API does not provide full user authentication.
+### Multi-Source Financial News
 
-Local JSON persistence is not a multi-node production database layer.
+Historical CSV data, RSS, NewsAPI, and Finnhub can contribute to the platform's financial-news intelligence layer.
 
-Frontend deployment configuration is still pending.
+### Idempotent Ingestion
 
-Frontend and full E2E coverage are limited.
+Deterministic IDs and persisted ingestion state reduce duplicate inserts and allow ingestion to resume.
 
-Key Engineering Achievements
+### Hybrid Opportunity Scanner
 
-Hybrid deterministic + GenAI stock-analysis architecture.
+A deterministic filter narrows a larger candidate space before LLM-based selection.
 
-Local 384-dimensional embeddings with Sentence Transformers.
+### Provider Failover
 
-Multi-source financial-news ingestion from historical CSV, RSS, NewsAPI, and Finnhub.
+Groq → Gemini provides resilience for conversational AI.
 
-Sector-rotation news ingestion for broader market coverage.
+### Goal-Based Portfolio Intelligence
 
-Idempotent and resumable ingestion with deterministic IDs.
+Portfolio analysis combines prices, P&L, risk context, sentiment, and LLM-generated suggestions.
 
-Explainable sentiment scoring with weighting, negation, intensifiers, contrast handling, and recency decay.
+### Typed Frontend / Backend Contract
 
-Two-stage opportunity scanner that reduces candidates before LLM reasoning.
+TypeScript interfaces mirror backend response models to keep the UI/data boundary explicit.
 
-Groq → Gemini provider fallback for conversational research.
+These are among the main engineering achievements identified by the project audit. fileciteturn39file1L634-L646
 
-Goal-based portfolio analytics with risk-aware AI suggestions.
+---
 
-Type-safe frontend/backend contracts using TypeScript and FastAPI/Pydantic models.
+# Future Improvements
 
-Future Improvements
+Planned or logical next steps include:
 
-Deploy the Next.js frontend
+- Production frontend deployment
+- Authentication and user accounts
+- Managed relational persistence
+- Distributed rate limiting
+- Managed/distributed vector storage
+- Full frontend testing
+- Full E2E testing
+- Better telemetry and observability
+- Additional market-data providers
+- More advanced retrieval/reranking
+- Richer portfolio analytics
+- Improved live-news quality and entity resolution
 
-Add user authentication and account-level persistence
+---
 
-Move portfolio/chat persistence to a managed database
+# Disclaimer
 
-Use managed/distributed vector infrastructure
+Vector Wealth is a **software engineering and investment-research project**.
 
-Add distributed rate limiting
+Its sentiment scores, recommendations, opportunity rankings, portfolio suggestions, and AI-generated responses are intended for **research and educational purposes only** and should not be treated as personalized financial advice.
 
-Add frontend unit/integration/E2E testing
+Always verify important information independently and consult a qualified financial professional before making investment decisions.
 
-Improve observability and structured monitoring
+---
 
-Add provider health monitoring
+# Author
 
-Add richer market-data sources and retrieval/reranking
+**Abhishek Tajane**
 
-Expand portfolio analytics and personalization
+GitHub: [@abhishek24-06](https://github.com/abhishek24-06)
 
-Author
+---
 
-Abhishek Tajane
+# Project Status
 
-GitHub: https://github.com/abhishek24-06
+**Feature-complete research platform with a working FastAPI backend and Next.js frontend.**
 
-Repository
+Vector Wealth demonstrates how:
 
-https://github.com/abhishek24-06/Vector-Wealth-AI-Investment-Intelligence-Platform
+```text
+Financial News
+      +
+Semantic Retrieval
+      +
+Explainable Sentiment
+      +
+Market Data
+      +
+LLM Reasoning
+      +
+Portfolio Context
+      ↓
+Investment Intelligence
+```
+
+can be assembled into a single research workflow for the Indian stock market.
